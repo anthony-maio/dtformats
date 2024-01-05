@@ -239,22 +239,17 @@ class WindowsAMCacheFile(data_format.BinaryDataFile):
     if root_key_name.lower() not in self._ROOT_KEY_NAMES:
       return
 
-    root_key = regf_file.get_key_by_path('\\Root')
-    if root_key:
-      file_key = root_key.get_sub_key_by_path('File')
-      if file_key:
+    if root_key := regf_file.get_key_by_path('\\Root'):
+      if file_key := root_key.get_sub_key_by_path('File'):
         self._ReadFileKey(file_key)
 
-      programs_key = root_key.get_sub_key_by_path('Programs')
-      if programs_key:
+      if programs_key := root_key.get_sub_key_by_path('Programs'):
         self._ReadProgramsKey(programs_key)
 
-      inventory_application_key = root_key.get_sub_key_by_path(
-          'InventoryApplication')
-      if inventory_application_key:
+      if inventory_application_key := root_key.get_sub_key_by_path(
+          'InventoryApplication'):
         self._ReadInventoryApplicationKey(inventory_application_key)
 
-      inventory_application_file_key = root_key.get_sub_key_by_path(
-          'InventoryApplicationFile')
-      if inventory_application_file_key:
+      if inventory_application_file_key := root_key.get_sub_key_by_path(
+          'InventoryApplicationFile'):
         self._ReadInventoryApplicationFileKey(inventory_application_file_key)

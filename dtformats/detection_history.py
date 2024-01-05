@@ -145,10 +145,6 @@ class WindowsDefenderScanDetectionHistoryFile(data_format.BinaryDataFile):
       debug_info = self._DEBUG_INFORMATION.get('threat_tracking_header', None)
       self._DebugPrintStructureObject(threat_tracking_header, debug_info)
 
-    if threat_tracking_header.header_size > 20:
-      # TODO: debug print additional data.
-      pass
-
     return threat_tracking_header
 
   def _ReadThreatTrackingValue(self, threat_tracking_data, file_offset):

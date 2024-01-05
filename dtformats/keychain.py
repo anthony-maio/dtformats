@@ -576,10 +576,7 @@ class KeychainDatabaseFile(data_format.BinaryDataFile):
         attribute_value_offsets[3], 'attribute name')
 
     if self._debug:
-      if attribute_name is None:
-        value_string = 'NULL'
-      else:
-        value_string = attribute_name
+      value_string = 'NULL' if attribute_name is None else attribute_name
       self._DebugPrintValue('Attribute name', value_string)
 
     # TODO: add support for AttributeNameID

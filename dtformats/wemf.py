@@ -194,10 +194,8 @@ class EMFFile(data_format.BinaryDataFile):
         self._DebugPrintValue('Color', f'0x{record.color:04x}')
 
       elif record_type == 0x0025:
-        stock_object_string = self._EMF_STOCK_OBJECT.GetName(
-            record.object_identifier)
-
-        if stock_object_string:
+        if stock_object_string := self._EMF_STOCK_OBJECT.GetName(
+            record.object_identifier):
           value_string = (
               f'0x{record.object_identifier:08x} ({stock_object_string:s})')
         else:

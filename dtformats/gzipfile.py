@@ -63,8 +63,7 @@ class GZipFile(data_format.BinaryDataFile):
       file_object (file): file-like object.
     """
     zlib_decompressor = zlib.decompressobj(-zlib.MAX_WBITS)
-    compressed_data = file_object.read(self._BUFFER_SIZE)
-    while compressed_data:
+    while compressed_data := file_object.read(self._BUFFER_SIZE):
       data, compressed_data = self._ReadCompressedData(
           zlib_decompressor, compressed_data)
       if compressed_data:
@@ -72,8 +71,6 @@ class GZipFile(data_format.BinaryDataFile):
 
       if not data:
         break
-
-      compressed_data = file_object.read(self._BUFFER_SIZE)
 
   def _ReadMemberFooter(self, file_object):
     """Reads a member footer.

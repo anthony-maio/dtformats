@@ -254,16 +254,14 @@ def Main():
       properties_plist = ''
       metadata_version = ''
 
-      metadata_item = spotlight_store_database.GetMetadataItemByIdentifier(1)
-      if metadata_item:
-        metadata_attribute = metadata_item.attributes.get(
-            'kMDStoreProperties', None)
-        if metadata_attribute:
+      if metadata_item := spotlight_store_database.GetMetadataItemByIdentifier(
+          1):
+        if metadata_attribute := metadata_item.attributes.get(
+            'kMDStoreProperties', None):
           properties_plist = metadata_attribute.value.decode('utf-8')
 
-        metadata_attribute = metadata_item.attributes.get(
-            '_kStoreMetadataVersion', None)
-        if metadata_attribute:
+        if metadata_attribute := metadata_item.attributes.get(
+            '_kStoreMetadataVersion', None):
           major_version = metadata_attribute.value >> 16
           minor_version = metadata_attribute.value & 0xffff
           metadata_version = f'{major_version:d}.{minor_version:d}'
@@ -321,7 +319,7 @@ def Main():
 
 
 if __name__ == '__main__':
-  if not Main():
-    sys.exit(1)
-  else:
+  if Main():
     sys.exit(0)
+  else:
+    sys.exit(1)

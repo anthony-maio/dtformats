@@ -76,10 +76,7 @@ class DFVFSFileSystemHelper(
         parent=self._parent_path_spec)
 
     file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
-    if not file_entry:
-      return None
-
-    return file_entry.size
+    return None if not file_entry else file_entry.size
 
   def JoinPath(self, path_segments):
     """Joins the path segments into a path.
@@ -105,8 +102,7 @@ class DFVFSFileSystemHelper(
         self._file_system.type_indicator, location=path,
         parent=self._parent_path_spec)
 
-    file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
-    if file_entry:
+    if file_entry := self._file_system.GetFileEntryByPathSpec(path_spec):
       for sub_file_entry in file_entry.sub_file_entries:
         yield sub_file_entry.name
 

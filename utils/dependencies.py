@@ -155,16 +155,17 @@ class DependencyHelper(object):
             the minimum required version, False otherwise.
         str: status message.
     """
-    module_object = self._ImportPythonModule(dependency.name)
-    if not module_object:
+    if module_object := self._ImportPythonModule(dependency.name):
+      return ((True, dependency.name) if not dependency.version_property else
+              self._CheckPythonModuleVersion(
+                  dependency.name,
+                  module_object,
+                  dependency.version_property,
+                  dependency.minimum_version,
+                  dependency.maximum_version,
+              ))
+    else:
       return False, f'missing: {dependency.name:s}'
-
-    if not dependency.version_property:
-      return True, dependency.name
-
-    return self._CheckPythonModuleVersion(
-        dependency.name, module_object, dependency.version_property,
-        dependency.minimum_version, dependency.maximum_version)
 
   def _CheckPythonModuleVersion(
       self, module_name, module_object, version_property, minimum_version,
@@ -188,11 +189,8 @@ class DependencyHelper(object):
     module_version = None
     if not version_property.endswith('()'):
       module_version = getattr(module_object, version_property, None)
-    else:
-      version_method = getattr(
-          module_object, version_property[:-2], None)
-      if version_method:
-        module_version = version_method()
+    elif version_method := getattr(module_object, version_property[:-2], None):
+      module_version = version_method()
 
     if not module_version:
       return False, (
@@ -280,11 +278,7 @@ class DependencyHelper(object):
       verbose_output (Optional[bool]): True if output should be verbose.
     """
     if not result or dependency.is_optional:
-      if dependency.is_optional:
-        status_indicator = '[OPTIONAL]'
-      else:
-        status_indicator = '[FAILURE]'
-
+      status_indicator = '[OPTIONAL]' if dependency.is_optional else '[FAILURE]'
       print(f'{status_indicator:s}\t{status_message:s}')
 
     elif verbose_output:

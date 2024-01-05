@@ -43,12 +43,10 @@ def SuperFastHash(key):
 
   key_index = key_length
 
-  if remainder == 3:
-    hash_value = (
-        (hash_value + key[key_index] + (key[key_index + 1] << 8)) & 0xffffffff)
-    hash_value ^= (hash_value << 16) & 0xffffffff
-    hash_value ^= (key[key_index + 2] << 18) & 0xffffffff
-    hash_value = (hash_value + (hash_value >> 11)) & 0xffffffff
+  if remainder == 1:
+    hash_value = (hash_value + key[key_index]) & 0xffffffff
+    hash_value ^= (hash_value << 10) & 0xffffffff
+    hash_value = (hash_value + (hash_value >> 1)) & 0xffffffff
 
   elif remainder == 2:
     hash_value = (
@@ -56,10 +54,12 @@ def SuperFastHash(key):
     hash_value ^= (hash_value << 11) & 0xffffffff
     hash_value = (hash_value + (hash_value >> 17)) & 0xffffffff
 
-  elif remainder == 1:
-    hash_value = (hash_value + key[key_index]) & 0xffffffff
-    hash_value ^= (hash_value << 10) & 0xffffffff
-    hash_value = (hash_value + (hash_value >> 1)) & 0xffffffff
+  elif remainder == 3:
+    hash_value = (
+        (hash_value + key[key_index] + (key[key_index + 1] << 8)) & 0xffffffff)
+    hash_value ^= (hash_value << 16) & 0xffffffff
+    hash_value ^= (key[key_index + 2] << 18) & 0xffffffff
+    hash_value = (hash_value + (hash_value >> 11)) & 0xffffffff
 
   # Force "avalanching" of final 127 bits.
   hash_value ^= (hash_value << 3) & 0xffffffff
@@ -67,9 +67,7 @@ def SuperFastHash(key):
   hash_value ^= (hash_value << 4) & 0xffffffff
   hash_value = (hash_value + (hash_value >> 17)) & 0xffffffff
   hash_value ^= (hash_value << 25) & 0xffffffff
-  hash_value = (hash_value + (hash_value >> 6)) & 0xffffffff
-
-  return hash_value
+  return (hash_value + (hash_value >> 6)) & 0xffffffff
 
 
 class CacheAddress(object):
@@ -121,7 +119,7 @@ class CacheAddress(object):
       self.is_initialized = True
 
     self.file_type = (cache_address & 0x70000000) >> 28
-    if not cache_address == 0x00000000:
+    if cache_address != 0x00000000:
       if self.file_type == self.FILE_TYPE_SEPARATE:
         file_selector = cache_address & 0x0fffffff
         self.filename = f'f_{file_selector:06x}'
@@ -231,7 +229,7 @@ class DataBlockFile(data_format.BinaryDataFile):
     in_block_range = False
 
     for value_32bit in allocation_bitmap:
-      for unused_bit in range(32):
+      for _ in range(32):
         if value_32bit & 0x00000001:
           if not in_block_range:
             block_range_start = block_number

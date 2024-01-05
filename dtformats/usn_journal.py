@@ -68,9 +68,7 @@ class USNRecords(data_format.BinaryDataFile):
     file_offset = 0
     while file_offset < self._file_size:
       block_size = 4096
-      if block_size > self._file_size:
-        block_size = self._file_size
-
+      block_size = min(block_size, self._file_size)
       while block_size > 60:
         usn_record_header = self._file_object.read(60)
         if usn_record_header == self._EMPTY_USN_RECORD_HEADER:

@@ -96,8 +96,7 @@ class YAMLDebugDefinitionsFile(object):
     if not definition_values:
       raise errors.ParseError('Missing debug definition values.')
 
-    different_keys = set(definition_values) - self._SUPPORTED_KEYS
-    if different_keys:
+    if different_keys := set(definition_values) - self._SUPPORTED_KEYS:
       different_keys = ', '.join(different_keys)
       raise errors.ParseError(f'Undefined keys: {different_keys:s}')
 
@@ -174,5 +173,4 @@ class YAMLDebugDefinitionsFile(object):
       DebugDefinition: a debug definition.
     """
     with open(path, 'r', encoding='utf-8') as file_object:
-      for yaml_definition in self._ReadFromFileObject(file_object):
-        yield yaml_definition
+      yield from self._ReadFromFileObject(file_object)
