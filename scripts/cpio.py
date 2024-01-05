@@ -110,11 +110,8 @@ class CPIOArchiveFileHasher(object):
           continue
 
         sha256_context = hashlib.sha256()
-        file_data = file_entry.read(4096)
-        while file_data:
+        while file_data := file_entry.read(4096):
           sha256_context.update(file_data)
-          file_data = file_entry.read(4096)
-
         digest_hash = sha256_context.hexdigest()
         self._output_writer.WriteText(f'{digest_hash:s}\t{file_entry.path:s}\n')
 
@@ -195,7 +192,7 @@ def Main():
 
 
 if __name__ == '__main__':
-  if not Main():
-    sys.exit(1)
-  else:
+  if Main():
     sys.exit(0)
+  else:
+    sys.exit(1)

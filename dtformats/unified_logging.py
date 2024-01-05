@@ -276,15 +276,11 @@ class FormatStringOperator(object):
 
       # Ignore the precision of specifier "P" since it refers to the binary
       # data not the resulting string.
-      if self.specifier == 'P':
+      if self.specifier == 'P' or precision != '.' and precision == '.*':
         precision = ''
 
-      # Prevent: "ValueError: Format specifier missing precision"
       elif precision == '.':
         precision = '.0'
-
-      elif precision == '.*':
-        precision = ''
 
       if python_specifier in ('d', 'o', 'x', 'X'):
         flags = flags.replace('-', '<')
@@ -294,11 +290,7 @@ class FormatStringOperator(object):
         precision = ''
 
       elif python_specifier == 's':
-        if width and not flags:
-          flags = '>'
-        else:
-          flags = flags.replace('-', '<')
-
+        flags = '>' if width and not flags else flags.replace('-', '<')
         # Prevent: "%.0s" formatting as an empty string.
         if precision == '.0':
           precision = ''
@@ -382,13 +374,11 @@ class StringFormatter(object):
       values.append('<decode: missing data>')
 
     if self._format_string is None:
-      formatted_string = ''
+      return ''
     elif self._operators:
-      formatted_string = self._format_string.format(*values)
+      return self._format_string.format(*values)
     else:
-      formatted_string = self._format_string
-
-    return formatted_string
+      return self._format_string
 
   def GetDecoderNamesByIndex(self, value_index):
     """Retrieves the decoder names of a specific value.
@@ -455,8 +445,7 @@ class StringFormatter(object):
             value not in self._DECODERS_TO_IGNORE and value[:5] != 'name=')]
 
         if not decoder_names:
-          internal_decoder = self._INTERNAL_DECODERS.get(specifier, None)
-          if internal_decoder:
+          if internal_decoder := self._INTERNAL_DECODERS.get(specifier, None):
             decoder_names = [internal_decoder]
 
         format_string_operator = FormatStringOperator(
@@ -528,9 +517,7 @@ class BooleanFormatStringDecoder(BaseFormatStringDecoder):
     Returns:
       str: formatted boolean value.
     """
-    integer_value = int.from_bytes(value, 'little', signed=False)
-
-    if integer_value:
+    if integer_value := int.from_bytes(value, 'little', signed=False):
       return self._true_value
 
     return self._false_value
@@ -725,7 +712,7 @@ class IPv6FormatStringDecoder(BaseFormatStringDecoder):
     """
     if len(value) == 16:
       # Note that socket.inet_ntop() is not supported on Windows.
-      octet_pairs = zip(value[0::2], value[1::2])
+      octet_pairs = zip(value[::2], value[1::2])
       octet_pairs = [octet1 << 8 | octet2 for octet1, octet2 in octet_pairs]
       # TODO: determine if ":0000" should be omitted from the string.
       return ':'.join([f'{octet_pair:04x}' for octet_pair in octet_pairs])
@@ -758,11 +745,7 @@ class BaseLocationStructureFormatStringDecoder(
         continue
 
       if isinstance(attribute_value, bool):
-        if attribute_value:
-          attribute_value = 'true'
-        else:
-          attribute_value = 'false'
-
+        attribute_value = 'true' if attribute_value else 'false'
       elif isinstance(attribute_value, int):
         attribute_value = f'{attribute_value:d}'
 
@@ -1077,12 +1060,7 @@ class BaseMDNSDNSStructureFormatStringDecoder(
     reponse_code = flags & self._RESPONSE_CODE_BITMASK
     reponse_code = self._RESPONSE_CODES.get(reponse_code, '?')
 
-    flag_names = []
-
-    for bitmask, name in self._FLAG_NAMES:
-      if flags & bitmask:
-        flag_names.append(name)
-
+    flag_names = [name for bitmask, name in self._FLAG_NAMES if flags & bitmask]
     flag_names = ', '.join(flag_names)
 
     operation = (flags & self._OPERATION_BITMASK) >> 11
@@ -1808,7 +1786,7 @@ class SocketAddressFormatStringDecoder(BaseFormatStringDecoder):
       if address_family == 30 and value_size == 28:
         ipv6_address = value[8:24]
         # Note that socket.inet_ntop() is not supported on Windows.
-        octet_pairs = zip(ipv6_address[0::2], ipv6_address[1::2])
+        octet_pairs = zip(ipv6_address[::2], ipv6_address[1::2])
         octet_pairs = [octet1 << 8 | octet2 for octet1, octet2 in octet_pairs]
         string_segments = [
             f'{octet_pair:04x}' if octet_pair else ''
@@ -2609,16 +2587,14 @@ class TraceV3File(data_format.BinaryDataFile):
     Returns:
       tuple[int, bool]: string reference and dynamic flag.
     """
-    is_dynamic = bool(string_reference & 0x80000000 != 0)
+    is_dynamic = string_reference & 0x80000000 != 0
     if is_dynamic:
       string_reference &= 0x7fffffff
 
     large_offset_data = getattr(
         tracepoint_data_object, 'large_offset_data', None)
-    large_shared_cache_data = getattr(
-        tracepoint_data_object, 'large_shared_cache_data', None)
-
-    if large_shared_cache_data:
+    if large_shared_cache_data := getattr(tracepoint_data_object,
+                                          'large_shared_cache_data', None):
       string_reference |= large_shared_cache_data << 31
 
     elif large_offset_data:
@@ -2642,15 +2618,13 @@ class TraceV3File(data_format.BinaryDataFile):
     """
     string_reference = getattr(
         tracepoint_data_object, 'name_string_reference_lower', None) or 0
-    is_dynamic = bool(string_reference & 0x80000000 != 0)
+    is_dynamic = string_reference & 0x80000000 != 0
 
     if is_dynamic:
       string_reference &= 0x7fffffff
 
-    large_offset_data = getattr(
-        tracepoint_data_object, 'name_string_reference_upper', None)
-
-    if large_offset_data:
+    if large_offset_data := getattr(tracepoint_data_object,
+                                    'name_string_reference_upper', None):
       string_reference |= large_offset_data << 31
 
     if self._debug:
@@ -2677,10 +2651,8 @@ class TraceV3File(data_format.BinaryDataFile):
 
     large_offset_data = getattr(
         tracepoint_data_object, 'large_offset_data', None)
-    large_shared_cache_data = getattr(
-        tracepoint_data_object, 'large_shared_cache_data', None)
-
-    if large_shared_cache_data:
+    if large_shared_cache_data := getattr(tracepoint_data_object,
+                                          'large_shared_cache_data', None):
       calculated_large_offset_data = large_shared_cache_data >> 1
       if (large_offset_data and
           large_offset_data != calculated_large_offset_data):
@@ -2810,8 +2782,7 @@ class TraceV3File(data_format.BinaryDataFile):
     Returns:
       str: integer formatted as chunk tag.
     """
-    description = self._CHUNK_TAG_DESCRIPTIONS.get(integer, None)
-    if description:
+    if description := self._CHUNK_TAG_DESCRIPTIONS.get(integer, None):
       return f'0x{integer:08x} ({description:s})'
 
     return f'0x{integer:08x}'
@@ -2836,8 +2807,7 @@ class TraceV3File(data_format.BinaryDataFile):
     Returns:
       str: integer formatted as firehose stream type.
     """
-    description = self._STREAM_TYPE_DESCRIPTIONS.get(integer, None)
-    if description:
+    if description := self._STREAM_TYPE_DESCRIPTIONS.get(integer, None):
       return f'0x{integer:02x} ({description:s})'
 
     return f'0x{integer:02x}'
@@ -2901,8 +2871,7 @@ class TraceV3File(data_format.BinaryDataFile):
     Returns:
       str: integer formatted as firehose tracepoint log type.
     """
-    description = self._LOG_TYPE_DESCRIPTIONS.get(integer, None)
-    if description:
+    if description := self._LOG_TYPE_DESCRIPTIONS.get(integer, None):
       return f'0x{integer:02x} ({description:s})'
 
     return f'0x{integer:02x}'
@@ -2916,8 +2885,7 @@ class TraceV3File(data_format.BinaryDataFile):
     Returns:
       str: integer formatted as firehose tracepoint record type.
     """
-    description = self._RECORD_TYPE_DESCRIPTIONS.get(integer, None)
-    if description:
+    if description := self._RECORD_TYPE_DESCRIPTIONS.get(integer, None):
       return f'0x{integer:02x} ({description:s})'
 
     return f'0x{integer:02x}'
@@ -2994,8 +2962,7 @@ class TraceV3File(data_format.BinaryDataFile):
       return data_items, values_data, private_data
 
     lookup_key = f'{proc_id:s}:{data_reference:04x}'
-    oversize_chunk = oversize_chunks.get(lookup_key, None)
-    if oversize_chunk:
+    if oversize_chunk := oversize_chunks.get(lookup_key, None):
       return (oversize_chunk.data_items, oversize_chunk.values_data,
               oversize_chunk.private_data)
 
@@ -3100,8 +3067,7 @@ class TraceV3File(data_format.BinaryDataFile):
         image_values = ImageValues(
             identifier=strings_file_identifier, text_offset=image_text_offset)
 
-        uuidtext_file = self._GetUUIDTextFile(uuid_string)
-        if uuidtext_file:
+        if uuidtext_file := self._GetUUIDTextFile(uuid_string):
           image_values.path = uuidtext_file.GetImagePath()
           if is_dynamic:
             image_values.string = '%s'
@@ -3112,8 +3078,7 @@ class TraceV3File(data_format.BinaryDataFile):
               image_values.text_offset = large_offset_data << 31
 
       else:
-        dsc_file = self._GetDSCFile(uuid_string)
-        if dsc_file:
+        if dsc_file := self._GetDSCFile(uuid_string):
           image_values = dsc_file.GetImageValues(string_reference, is_dynamic)
 
         if not image_values:
@@ -3174,8 +3139,7 @@ class TraceV3File(data_format.BinaryDataFile):
 
     if process_information_entry and process_information_entry.main_uuid:
       uuid_string = process_information_entry.main_uuid.hex.upper()
-      uuidtext_file = self._GetUUIDTextFile(uuid_string)
-      if uuidtext_file:
+      if uuidtext_file := self._GetUUIDTextFile(uuid_string):
         image_identifier = process_information_entry.main_uuid
         image_path = uuidtext_file.GetImagePath()
 
@@ -3230,8 +3194,7 @@ class TraceV3File(data_format.BinaryDataFile):
       int: timestamp containing the number of nanoseconds since January 1, 1970
           00:00:00.000000000.
     """
-    timesync_record = self._GetTimesyncRecord(continuous_time)
-    if timesync_record:
+    if timesync_record := self._GetTimesyncRecord(continuous_time):
       continuous_time -= timesync_record.kernel_time
       timestamp = timesync_record.timestamp + int(
           continuous_time * self._timesync_timebase)
@@ -3285,11 +3248,11 @@ class TraceV3File(data_format.BinaryDataFile):
     Returns:
       timesync_sync_record: timesync sync record or None if not available.
     """
-    for record in self._sorted_timesync_sync_records:
-      if continuous_time >= record.kernel_time:
-        return record
-
-    return None
+    return next(
+        (record for record in self._sorted_timesync_sync_records
+         if continuous_time >= record.kernel_time),
+        None,
+    )
 
   def _GetUUIDTextFile(self, uuid_string):
     """Retrieves a specific uuidtext file.
@@ -3372,8 +3335,8 @@ class TraceV3File(data_format.BinaryDataFile):
     if not self._uuidtext_path:
       return None
 
-    uuidtext_file_path = self._file_system_helper.JoinPath([
-        self._uuidtext_path, uuid_string[0:2], uuid_string[2:]])
+    uuidtext_file_path = self._file_system_helper.JoinPath(
+        [self._uuidtext_path, uuid_string[:2], uuid_string[2:]])
     result = self._file_system_helper.CheckFileExistsByPath(uuidtext_file_path)
     if not result:
       return None
@@ -3675,13 +3638,13 @@ class TraceV3File(data_format.BinaryDataFile):
     for data_item in data_items:
       value_data = None
 
-      if data_item.value_type in self._DATA_ITEM_NUMERIC_VALUE_TYPES:
+      if (data_item.value_type in self._DATA_ITEM_NUMERIC_VALUE_TYPES
+          or data_item.value_type in self._DATA_ITEM_PRECISION_VALUE_TYPES):
         value_data = data_item.data
 
-      elif data_item.value_type in self._DATA_ITEM_PRECISION_VALUE_TYPES:
-        value_data = data_item.data
-
-      elif data_item.value_type in self._DATA_ITEM_STRING_VALUE_TYPES:
+      elif (data_item.value_type in self._DATA_ITEM_STRING_VALUE_TYPES or
+            data_item.value_type not in self._DATA_ITEM_PRIVATE_STRING_VALUE_TYPES
+            and data_item.value_type in self._DATA_ITEM_BINARY_DATA_VALUE_TYPES):
         value_data_offset = data_item.value_data_offset
         value_data = values_data[
             value_data_offset:value_data_offset + data_item.value_data_size]
@@ -3690,11 +3653,6 @@ class TraceV3File(data_format.BinaryDataFile):
         value_data_offset = (
             private_data_range_offset + data_item.value_data_offset)
         value_data = private_data[
-            value_data_offset:value_data_offset + data_item.value_data_size]
-
-      elif data_item.value_type in self._DATA_ITEM_BINARY_DATA_VALUE_TYPES:
-        value_data_offset = data_item.value_data_offset
-        value_data = values_data[
             value_data_offset:value_data_offset + data_item.value_data_size]
 
       if self._debug:

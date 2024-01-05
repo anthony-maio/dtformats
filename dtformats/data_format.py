@@ -183,7 +183,7 @@ class BinaryDataFormat(object):
       else:
         whitespace = ' ' * (3 * remaining_size)
 
-      hexadecimal_string_part1 = ' '.join(hexadecimal_byte_values[0:8])
+      hexadecimal_string_part1 = ' '.join(hexadecimal_byte_values[:8])
       hexadecimal_string_part2 = ' '.join(hexadecimal_byte_values[8:16])
       hexadecimal_string = (
           f'{hexadecimal_string_part1:s}  {hexadecimal_string_part2:s}'
@@ -268,7 +268,7 @@ class BinaryDataFormat(object):
     lines = None
     if len(array_of_integers) == 16:
       # Note that socket.inet_ntop() is not supported on Windows.
-      octet_pairs = zip(array_of_integers[0::2], array_of_integers[1::2])
+      octet_pairs = zip(array_of_integers[::2], array_of_integers[1::2])
       octet_pairs = [octet1 << 8 | octet2 for octet1, octet2 in octet_pairs]
       # TODO: omit ":0000" from the string.
       lines = ':'.join([f'{octet_pair:04x}' for octet_pair in octet_pairs])
@@ -316,11 +316,10 @@ class BinaryDataFormat(object):
       return 'Never (0x7fffffffffffffff)', False
 
     date_time = dfdatetime_filetime.Filetime(timestamp=integer)
-    date_time_string = date_time.CopyToDateTimeString()
-    if not date_time_string:
+    if date_time_string := date_time.CopyToDateTimeString():
+      return f'{date_time_string:s} UTC', False
+    else:
       return f'0x{integer:08x}', False
-
-    return f'{date_time_string:s} UTC', False
 
   def _FormatIntegerAsHexadecimal2(self, integer):
     """Formats an integer as an 2-digit hexadecimal.
@@ -371,11 +370,10 @@ class BinaryDataFormat(object):
       return 'Not set (0)'
 
     date_time = dfdatetime_posix_time.PosixTime(timestamp=integer)
-    date_time_string = date_time.CopyToDateTimeString()
-    if not date_time_string:
+    if date_time_string := date_time.CopyToDateTimeString():
+      return f'{date_time_string:s} UTC'
+    else:
       return f'0x{integer:08x}'
-
-    return f'{date_time_string:s} UTC'
 
   def _FormatIntegerAsPosixTimeInMicroseconds(self, integer):
     """Formats an integer as a POSIX date and time in microseconds value.
@@ -390,11 +388,10 @@ class BinaryDataFormat(object):
       return 'Not set (0)'
 
     date_time = dfdatetime_posix_time.PosixTimeInMicroseconds(timestamp=integer)
-    date_time_string = date_time.CopyToDateTimeString()
-    if not date_time_string:
+    if date_time_string := date_time.CopyToDateTimeString():
+      return f'{date_time_string:s} UTC'
+    else:
       return f'0x{integer:08x}'
-
-    return f'{date_time_string:s} UTC'
 
   def _FormatIntegerAsPosixTimeInNanoseconds(self, integer):
     """Formats an integer as a POSIX date and time in nanoseconds value.
@@ -409,11 +406,10 @@ class BinaryDataFormat(object):
       return 'Not set (0)'
 
     date_time = dfdatetime_posix_time.PosixTimeInNanoseconds(timestamp=integer)
-    date_time_string = date_time.CopyToDateTimeString()
-    if not date_time_string:
+    if date_time_string := date_time.CopyToDateTimeString():
+      return f'{date_time_string:s} UTC'
+    else:
       return f'0x{integer:08x}'
-
-    return f'{date_time_string:s} UTC'
 
   def _FormatIntegerAsOffset(self, integer):
     """Formats an integer as an offset.

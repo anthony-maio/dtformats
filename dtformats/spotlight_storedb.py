@@ -1084,11 +1084,7 @@ class SpotlightStoreDatabaseFile(data_format.BinaryDataFile):
       raise errors.ParseError(
           f'Unable to parse array of byte values with error: {exception!s}')
 
-    if bytes_read == 0:
-      value = array_of_values[0]
-    else:
-      value = array_of_values
-
+    value = array_of_values[0] if bytes_read == 0 else array_of_values
     bytes_read += data_size
 
     return value, bytes_read
@@ -1129,11 +1125,7 @@ class SpotlightStoreDatabaseFile(data_format.BinaryDataFile):
           f'Unable to parse array of 32-bit floating-point values with error: '
           f'{exception!s}'))
 
-    if bytes_read == 0:
-      value = array_of_values[0]
-    else:
-      value = array_of_values
-
+    value = array_of_values[0] if bytes_read == 0 else array_of_values
     bytes_read += data_size
 
     return value, bytes_read
@@ -1174,11 +1166,7 @@ class SpotlightStoreDatabaseFile(data_format.BinaryDataFile):
           f'Unable to parse array of 64-bit floating-point values with error: '
           f'{exception!s}'))
 
-    if bytes_read == 0:
-      value = array_of_values[0]
-    else:
-      value = array_of_values
-
+    value = array_of_values[0] if bytes_read == 0 else array_of_values
     bytes_read += data_size
 
     return value, bytes_read
@@ -1261,10 +1249,8 @@ class SpotlightStoreDatabaseFile(data_format.BinaryDataFile):
 
       metadata_localized_strings = self._metadata_localized_strings.get(
           table_index, None)
-      value_list = getattr(metadata_localized_strings, 'values_list', [])
-
       value = '(null)'
-      if value_list:
+      if value_list := getattr(metadata_localized_strings, 'values_list', []):
         value = value_list[0]
         if '\x16\x02' in value:
           value = value.split('\x16\x02')[0]
@@ -1687,15 +1673,14 @@ class SpotlightStoreDatabaseFile(data_format.BinaryDataFile):
     if page_header.uncompressed_page_size > 0:
       compressed_page_data = page_data
 
-      if (page_header.property_table_type & 0x00001000 and
-          compressed_page_data[0:4] in (b'bv41', b'bv4-')):
+      if page_header.property_table_type & 0x00001000 and compressed_page_data[:4] in (
+          b'bv41', b'bv4-'):
         page_data = self._DecompressLZ4PageData(
             compressed_page_data, file_offset)
 
       elif compressed_page_data[0] == 0x78:
         page_data = zlib.decompress(compressed_page_data)
 
-      # TODO: add support for other compression types.
       else:
         if self._debug:
           self._DebugPrintData('Data', page_data)

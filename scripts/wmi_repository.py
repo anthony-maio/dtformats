@@ -46,11 +46,7 @@ def PrintInstance(instance):
       ('__PATH', f'\\\\{server:s}\\{namespace:s}:{relpath:s}')]
 
   for property_name, property_value in sorted(instance.properties.items()):
-    if property_value is None:
-      property_value = ''
-    else:
-      property_value = f'{property_value!s}'
-
+    property_value = '' if property_value is None else f'{property_value!s}'
     name_value_pairs.append((property_name, property_value))
 
   largest_name = max(len(name) for name, _ in name_value_pairs)
@@ -161,7 +157,7 @@ def Main():
 
 
 if __name__ == '__main__':
-  if not Main():
-    sys.exit(1)
-  else:
+  if Main():
     sys.exit(0)
+  else:
+    sys.exit(1)

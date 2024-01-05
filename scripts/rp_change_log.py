@@ -58,19 +58,19 @@ def Main():
   print('')
 
   for change_log_entry in change_log_file.entries:
-    flags = []
-    for flag, description in change_log_file.LOG_ENTRY_TYPES.items():
-      if change_log_entry.entry_type & flag:
-        flags.append(description)
-
+    flags = [
+        description
+        for flag, description in change_log_file.LOG_ENTRY_TYPES.items()
+        if change_log_entry.entry_type & flag
+    ]
     flags_string = ', '.join(flags)
     print(f'Entry type:\t\t{flags_string:s}')
 
-    flags = []
-    for flag, description in change_log_file.LOG_ENTRY_FLAGS.items():
-      if change_log_entry.entry_flags & flag:
-        flags.append(description)
-
+    flags = [
+        description
+        for flag, description in change_log_file.LOG_ENTRY_FLAGS.items()
+        if change_log_entry.entry_flags & flag
+    ]
     flags_string = ', '.join(flags)
     print(f'Entry flags:\t\t{flags_string:s}')
 
@@ -87,7 +87,7 @@ def Main():
 
 
 if __name__ == '__main__':
-  if not Main():
-    sys.exit(1)
-  else:
+  if Main():
     sys.exit(0)
+  else:
+    sys.exit(1)

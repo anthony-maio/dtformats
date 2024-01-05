@@ -34,10 +34,8 @@ class LogEntriesHeap(object):
     Yields:
       LogEntry: log entry.
     """
-    log_entry = self.PopLogEntry()
-    while log_entry:
+    while log_entry := self.PopLogEntry():
       yield log_entry
-      log_entry = self.PopLogEntry()
 
   def PopLogEntry(self):
     """Pops a log entry from the heap.
@@ -467,7 +465,7 @@ def Main():
 
 
 if __name__ == '__main__':
-  if not Main():
-    sys.exit(1)
-  else:
+  if Main():
     sys.exit(0)
+  else:
+    sys.exit(1)

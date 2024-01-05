@@ -223,12 +223,11 @@ class ObjectsDataPage(object):
     Returns:
       cim_object_descriptor: an object descriptor or None.
     """
-    object_descriptor_match = None
-    for object_descriptor in self._object_descriptors:
-      if object_descriptor.identifier == record_identifier:
-        object_descriptor_match = object_descriptor
-        break
-
+    object_descriptor_match = next(
+        (object_descriptor for object_descriptor in self._object_descriptors
+         if object_descriptor.identifier == record_identifier),
+        None,
+    )
     if not object_descriptor_match:
       logging.warning('Object record data not found.')
       return None
@@ -322,7 +321,7 @@ class IndexBinaryTreeFile(data_format.BinaryDataFile):
     """
     super(IndexBinaryTreeFile, self).__init__(
         debug=debug, output_writer=output_writer)
-    self._unavailable_page_numbers = set([0, 0xffffffff])
+    self._unavailable_page_numbers = {0, 0xffffffff}
 
   def _DebugPrintPageBody(self, page_body):
     """Prints page body debug information.
@@ -462,11 +461,10 @@ class IndexBinaryTreeFile(data_format.BinaryDataFile):
 
       index_binary_tree_page.keys = []
       for page_key_segments in index_binary_tree_page.page_key_segments:
-        key_segments = []
-        for segment_index in page_key_segments:
-          page_value = index_binary_tree_page.page_values[segment_index]
-          key_segments.append(page_value)
-
+        key_segments = [
+            index_binary_tree_page.page_values[segment_index]
+            for segment_index in page_key_segments
+        ]
         key_path = ''.join([
             self._KEY_SEGMENT_SEPARATOR,
             self._KEY_SEGMENT_SEPARATOR.join(key_segments)])
@@ -641,7 +639,7 @@ class MappingFile(data_format.BinaryDataFile):
     super(MappingFile, self).__init__(debug=debug, output_writer=output_writer)
     self._mapping_table1 = None
     self._mapping_table2 = None
-    self._unavailable_page_numbers = set([0xffffffff])
+    self._unavailable_page_numbers = {0xffffffff}
 
     self.format_version = None
     self.sequence_number = None
@@ -945,11 +943,10 @@ class ObjectsDataFile(data_format.BinaryDataFile):
       ParseError: if the object descriptor cannot be read.
     """
     while True:
-      object_descriptor = self._ReadObjectDescriptor(file_object)
-      if not object_descriptor:
+      if object_descriptor := self._ReadObjectDescriptor(file_object):
+        objects_page.AppendObjectDescriptor(object_descriptor)
+      else:
         break
-
-      objects_page.AppendObjectDescriptor(object_descriptor)
 
   def _ReadPage(self, file_object, file_offset, is_data_page):
     """Reads a page.
@@ -1033,11 +1030,7 @@ class ObjectsDataFile(data_format.BinaryDataFile):
 
     available_page_size = self._PAGE_SIZE - data_offset
 
-    if data_size > available_page_size:
-      read_size = available_page_size
-    else:
-      read_size = data_size
-
+    read_size = min(data_size, available_page_size)
     return self._file_object.read(read_size)
 
 
@@ -1210,7 +1203,7 @@ class RepositoryFile(data_format.BinaryDataFile):
           leaf_node = self._ReadChildObjectsTreeLeafNode(
               node_cell.data, branch_node.leaf_node_offset)
 
-          for node_offset in (
+          yield from (
               leaf_node.value_node_offset1,
               leaf_node.value_node_offset2,
               leaf_node.value_node_offset3,
@@ -1220,8 +1213,8 @@ class RepositoryFile(data_format.BinaryDataFile):
               leaf_node.value_node_offset7,
               leaf_node.value_node_offset8,
               leaf_node.value_node_offset9,
-              leaf_node.value_node_offset10):
-            yield node_offset
+              leaf_node.value_node_offset10,
+          )
 
   # TODO: rename
   def _ReadChildObjectsTreeBranchNode(self, block_data, file_offset):
@@ -1763,17 +1756,13 @@ class RepositoryFile(data_format.BinaryDataFile):
       for value_node_offset in self._ReadChildObjectsList(
           file_object, root_node.child_objects_list_node_offset):
         if value_node_offset > 40:
-          instance = self._ReadInstance(file_object, value_node_offset)
-          yield instance
-
+          yield self._ReadInstance(file_object, value_node_offset)
     if root_node.sub_node_offset > 40 and root_node.sub_node_type in (9, 10):
       for value_node_offset in self._ReadChildObjectsTree(
           file_object, root_node.sub_node_offset):
         if value_node_offset > 40:
-          for instance in self._ReadClassDefinitionHierarchy(
-              file_object, value_node_offset):
-            yield instance
-
+          yield from self._ReadClassDefinitionHierarchy(file_object,
+                                                        value_node_offset)
     if self._debug:
       if root_node.child_objects_root_node_offset > 40:
         for value_node_offset in self._ReadChildObjectsTree(
@@ -1868,11 +1857,8 @@ class RepositoryFile(data_format.BinaryDataFile):
         self._ReadNameNode(node_cell.data, root_node.name_node_offset)
 
     if root_node.instance_branch_node_offset > 40:
-      instance = self._ReadInstance(
-          file_object, root_node.instance_branch_node_offset)
-
-      yield instance
-
+      yield self._ReadInstance(file_object,
+                               root_node.instance_branch_node_offset)
     if self._debug:
       if root_node.unknown_node5_offset > 40 and root_node.unknown2 == 0:
         node_cell = self._ReadNodeCell(
@@ -1900,11 +1886,8 @@ class RepositoryFile(data_format.BinaryDataFile):
                   node_cell.data, instance_leaf_value_node.name_node_offset)
 
           if instance_leaf_value_node.instance_root_node_offset > 40:
-            for instance in self._ReadInstanceHierarchy(
-                file_object,
-                instance_leaf_value_node.instance_root_node_offset):
-              yield instance
-
+            yield from self._ReadInstanceHierarchy(
+                file_object, instance_leaf_value_node.instance_root_node_offset)
     if self._debug:
       if root_node.child_objects_list_node_offset > 40:
         for value_node_offset in self._ReadChildObjectsList(
@@ -1956,11 +1939,11 @@ class RepositoryFile(data_format.BinaryDataFile):
                 node_cell.data, value_node_offset)
 
             if instance_leaf_value_node.instance_root_node_offset > 40:
-              for instance in self._ReadNamespaceInstanceHierarchy(
+              yield from self._ReadNamespaceInstanceHierarchy(
                   file_object,
                   instance_leaf_value_node.instance_root_node_offset,
-                  namespace_segments):
-                yield instance
+                  namespace_segments,
+              )
 
   def ReadClassDefinitions(self):
     """Reads class definitions.
@@ -1969,9 +1952,8 @@ class RepositoryFile(data_format.BinaryDataFile):
       Instance: instance.
     """
     if self._system_class_definition_root_node_offset > 40:
-      for instance in self._ReadClassDefinitionHierarchy(
-          self._file_object, self._system_class_definition_root_node_offset):
-        yield instance
+      yield from self._ReadClassDefinitionHierarchy(
+          self._file_object, self._system_class_definition_root_node_offset)
 
   def ReadInstances(self):
     """Reads instances.
@@ -1980,9 +1962,8 @@ class RepositoryFile(data_format.BinaryDataFile):
       Instance: instance.
     """
     if self._root_namespace_node_offset > 40:
-      for instance in self._ReadInstanceHierarchy(
-          self._file_object, self._root_namespace_node_offset):
-        yield instance
+      yield from self._ReadInstanceHierarchy(self._file_object,
+                                             self._root_namespace_node_offset)
 
   def ReadNamespaces(self):
     """Reads namespace instances.
@@ -1991,9 +1972,8 @@ class RepositoryFile(data_format.BinaryDataFile):
       Instance: instance.
     """
     if self._root_namespace_node_offset > 40:
-      for instance in self._ReadNamespaceInstanceHierarchy(
-          self._file_object, self._root_namespace_node_offset, []):
-        yield instance
+      yield from self._ReadNamespaceInstanceHierarchy(
+          self._file_object, self._root_namespace_node_offset, [])
 
   def ReadFileObject(self, file_object):
     """Reads a mappings file-like object.
@@ -2247,9 +2227,9 @@ class ClassDefinition(CIMObject):
         class_definition_data, record_data_offset, data_type_map,
         'class definition methods')
 
-    methods_block_size = class_definition_methods.methods_block_size
-
     if self._debug:
+      methods_block_size = class_definition_methods.methods_block_size
+
       size_value = methods_block_size & 0x7fffffff
       self._DebugPrintValue(
           'Methods block size', f'{size_value:d} (0x{methods_block_size:08x})')
@@ -2736,11 +2716,7 @@ class InstanceReference(CIMObject):
       self._DebugPrintStructureObject(
           instance_object_record, self._DEBUG_INFO_INSTANCE_OBJECT_RECORD)
 
-    if self._format_version == '2.1':
-      self.offset = 84
-    else:
-      self.offset = 144
-
+    self.offset = 84 if self._format_version == '2.1' else 144
     self.class_name_hash = instance_object_record.class_name_hash
     self.data = instance_object_record.instance_block_data
 

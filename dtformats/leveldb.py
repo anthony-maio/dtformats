@@ -531,10 +531,8 @@ class LevelDBDatabaseTableFile(LevelDBDatabaseFile):
     Raises:
       ParseError: if the index cannot be read.
     """
-    table_entries = list(self._ReadTable(
-        file_object, file_offset, block_data_size, 'Data'))
-
-    yield from table_entries
+    yield from list(
+        self._ReadTable(file_object, file_offset, block_data_size, 'Data'))
 
   def _ReadFileFooter(self, file_object):
     """Reads the file footer.
@@ -674,9 +672,9 @@ class LevelDBDatabaseTableFile(LevelDBDatabaseFile):
     shared_key_data = b''
 
     while data_offset < table_data_end_offset:
-      entry_offset = data_offset
-
       if self._debug:
+        entry_offset = data_offset
+
         value_string, _ = self._FormatIntegerAsDecimal(entry_offset)
         self._DebugPrintValue('Offset', value_string)
 
